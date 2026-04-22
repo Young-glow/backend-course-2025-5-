@@ -22,7 +22,30 @@ const server = http.createServer(async (req, res) => {
       res.end(data);
     } catch {
       res.writeHead(404);
-      res.end('Not Found in Cache');
+      res.end('Not Found');
+    }
+  } else if (req.method === 'PUT') {
+    let body = [];
+    req.on('data', (chunk) => body.push(chunk));
+    req.on('end', async () => {
+      try {
+        const data = Buffer.concat(body);
+        await fs.writeFile(cachePath, data);
+        res.writeHead(201);
+        res.end('Created');
+      } catch {
+        res.writeHead(500);
+        res.end('Error writing file');
+      }
+    });
+  } else if (req.method === 'DELETE') {
+    try {
+      await fs.unlink(cachePath);
+      res.writeHead(200);
+      res.end('OK');
+    } catch {
+      res.writeHead(404);
+      res.end('Not Found');
     }
   } else {
     res.writeHead(405);
@@ -39,7 +62,5 @@ async function initCache() {
 }
 
 initCache().then(() => {
-  server.listen(options.port, options.host, () => {
-    console.log(`Server running at http://${options.host}:${options.port}/`);
-  });
+  server.listen(options.port, options.host);
 });

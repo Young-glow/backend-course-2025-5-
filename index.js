@@ -2,6 +2,7 @@ const http = require('node:http');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { program } = require('commander');
+const superagent = require('superagent');
 
 program
   .requiredOption('-h, --host <address>', 'server address')
@@ -21,22 +22,24 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'image/jpeg' });
       res.end(data);
     } catch {
-      res.writeHead(404);
-      res.end('Not Found');
+      try {
+        const response = await superagent.get(`https://http.cat/${statusCode}`);
+        await fs.writeFile(cachePath, response.body);
+        res.writeHead(200, { 'Content-Type': 'image/jpeg' });
+        res.end(response.body);
+      } catch {
+        res.writeHead(404);
+        res.end('Not Found');
+      }
     }
   } else if (req.method === 'PUT') {
     let body = [];
     req.on('data', (chunk) => body.push(chunk));
     req.on('end', async () => {
-      try {
-        const data = Buffer.concat(body);
-        await fs.writeFile(cachePath, data);
-        res.writeHead(201);
-        res.end('Created');
-      } catch {
-        res.writeHead(500);
-        res.end('Error writing file');
-      }
+      const data = Buffer.concat(body);
+      await fs.writeFile(cachePath, data);
+      res.writeHead(201);
+      res.end('Created');
     });
   } else if (req.method === 'DELETE') {
     try {
